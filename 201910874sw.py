@@ -9,75 +9,89 @@ Height = 480
 Offset = 330
 Gap = 60
 
+#사각형 그리기
 def draw_rectangle(img, lpos, rpos, offset=0):
-    center = int((lpos+rpos)/2)
-    cv2.rectangle(img, (lpos-5, 15+offset), (lpos+5, 25+offset), (0,255,0), 2)
-    cv2.rectangle(img, (rpos-5, 15+offset), (rpos+5, 25+offset), (0,255,0), 2)
-    cv2.rectangle(img, (center-5,15+offset), (center+5,25+offset), (0,255,0), 2)
-    cv2.rectangle(img, (315,15+offset), (325,25+offset), (0,0,255), 2)
-    return img
+    center = int((lpos+rpos)/2) #센터 위치 설정
+    cv2.rectangle(img, (lpos-5, 15+offset), (lpos+5, 25+offset), (0,255,0), 2) #왼쪽 사각형
+    cv2.rectangle(img, (rpos-5, 15+offset), (rpos+5, 25+offset), (0,255,0), 2) #오른쪽 사각형
+    cv2.rectangle(img, (center-5,15+offset), (center+5,25+offset), (0,255,0), 2) #센터 사각형
+    cv2.rectangle(img, (315,15+offset), (325,25+offset), (0,0,255), 2) #빨간색 사각형
+    return img # 이미지 반환
 
+#좌우 분리
 def divide_left_right(lines):
     global Width
     low_slope_threshold = 0
-    high_slope_threshold = 10
-    slopes = []
-    new_lines = []
+    high_slope_threshold = 10 #기울기 임계값
+    slopes = [] #기울기 모음
+    new_lines = [] #선분 모음
+    # 찾은 선분들의 모음에서 좌표 파악
     for line in lines:
         x1, y1, x2, y2 = line[0]
+        # x2와 x1이 같다면
         if x2-x1==0:
-            slope=0
+            slope=0 # 기울기 : 0
         else:
-            slope=float(y2-y1)/float(x2-x1)
+            slope=float(y2-y1)/float(x2-x1) #아니라면 기울기 구하기
+        # 기울기가 임계값 사이에 있으면
         if abs(slope)>low_slope_threshold and abs(slope)<high_slope_threshold:
-            slopes.append(slope)
-            new_lines.append(line[0])
-    left_lines=[]
-    right_lines=[]
+            slopes.append(slope) # 기울기모음에 기울기 추가
+            new_lines.append(line[0]) #선분 모음에 선분 추가
+    left_lines=[] #왼쪽 선분
+    right_lines=[] #오른쪽 선분
+    #기울기 모음의 길이만큼 진행
     for j in range(len(slopes)):
-        Line=new_lines[j]
-        slope=slopes[j]
-        x1, y1, x2, y2=Line
+        Line=new_lines[j] #선분과
+        slope=slopes[j] #기울기 추출
+        x1, y1, x2, y2=Line #좌표 추출
+        #기울기:음수& x2가 넓이/2-90보다 작으면
         if (slope<0) and (x2<Width/2-90):
-            left_lines.append([Line.tolist()])
+            left_lines.append([Line.tolist()]) #왼쪽 선분에 추가
+        #기울기:양수& x2가 넓이/2-90보다 크면
         elif (slope>0) and (x1>Width/2+90):
-            right_lines.append([Line.tolist()])
+            right_lines.append([Line.tolist()]) #오른쪽 선분에 추가
     return left_lines,right_lines
 
+#여러 선분들을 하나의 선분으로 변환
 def get_line_params(lines):
-    x_sum=0.0
-    y_sum=0.0
-    m_sum=0.0
-    size=len(lines)
+    x_sum=0.0 #x합
+    y_sum=0.0 #y합
+    m_sum=0.0 #m합
+    size=len(lines) #선분모음의 길이만큼 size 설정
+    #size가 0이면
     if size==0:
-        return 0,0
+        return 0,0 #0,0 리턴
+    #선분모음에서
     for line in lines:
-        x1, y1, x2, y2 = line[0]
-        x_sum += x1+x2
-        y_sum += y1+y2
-        m_sum += float(y2-y1)/float(x2-x1)
-    x_avg=float(x_sum)/float(size*2)
-    y_avg=float(y_sum)/float(size*2)
-    m=m_sum/size
-    b=y_avg-m*x_avg
+        x1, y1, x2, y2 = line[0] #좌표추출
+        x_sum += x1+x2 #x합에 x좌표 추가
+        y_sum += y1+y2 #y합에 y좌표 추가
+        m_sum += float(y2-y1)/float(x2-x1) #m합에 기울기 추가
+    x_avg=float(x_sum)/float(size*2) #x평균 계산
+    y_avg=float(y_sum)/float(size*2) #y평균 계산
+    m=m_sum/size #m 평균 계산
+    b=y_avg-m*x_avg #b 계산
     return m,b
 
+#선분 위치 찾기
 def get_line_pos(lines, left=False, right=False):
     global Width, Height
     global Offset, Gap
-    m,b=get_line_params(lines)
+    m,b=get_line_params(lines) #하나의 선분으로 변환한 m,b값
     x1, x2 = 0,0
+    #선분을 못찾았을때
     if m==0 and b==0:
         if left:
-            pos=0
+            pos=0 #왼쪽 위치 0
         if right:
-            pos=Width
+            pos=Width #오른쪽 위치 Width만큼 (양끝)
+    #아니면
     else:
-        y=Gap/2
-        pos=(y-b)/m
-        b += Offset
-        x1=(Height-b)/float(m)
-        x2=((Height/2)-b)/float(m)
+        y=Gap/2 #y설정
+        pos=(y-b)/m #pos 구하기
+        b += Offset #선분 평행이동
+        x1=(Height-b)/float(m) 
+        x2=((Height/2)-b)/float(m) #평행이동한 선분을 늘려서 그려줌
     return x1, x2, int(pos)
 
 def process_image(frame):
