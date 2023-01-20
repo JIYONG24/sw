@@ -94,58 +94,63 @@ def get_line_pos(lines, left=False, right=False):
         x2=((Height/2)-b)/float(m) #평행이동한 선분을 늘려서 그려줌
     return x1, x2, int(pos)
 
+#프레임 해석
 def process_image(frame):
     global Width
     global Offset, Gap
-    gray=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    kernel_size=5
-    blur_gray=cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0)
-    low_threshold=60
-    high_threshold=70
-    edge_img=cv2.Canny(np.uint8(blur_gray), low_threshold, high_threshold)
-    roi=edge_img[Offset:Offset+Gap, 0:Width]
-    all_lines=cv2.HoughLinesP(roi,1,math.pi/180,40,30,10)
+    gray=cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) #이미지 회색으로 변환
+    kernel_size=5 #kernel_size 설정
+    blur_gray=cv2.GaussianBlur(gray, (kernel_size, kernel_size), 0) #회색 이미지 흐릿하게 만들기
+    low_threshold=60 
+    high_threshold=70 #임계값 설정
+    edge_img=cv2.Canny(np.uint8(blur_gray), low_threshold, high_threshold) #그림에서 외곽선 찾기
+    roi=edge_img[Offset:Offset+Gap, 0:Width] #roi 설정
+    all_lines=cv2.HoughLinesP(roi,1,math.pi/180,40,30,10) #그림에서 직선 검출
+    # 직선이 없으면
     if all_lines is None:
-        return (0,640),frame
-    left_lines,right_lines=divide_left_right(all_lines)
-    lx1,lx2,lpos=get_line_pos(left_lines,left=True)
-    rx1,rx2,rpos=get_line_pos(right_lines,right=True)
-    frame=cv2.line(frame,(int(lx1),Height),(int(lx2),int(Height/2)),(255,0,0),3)
-    frame=cv2.line(frame,(int(rx1),Height),(int(rx2),int(Height/2)),(255,0,0),3)
-    frame=draw_rectangle(frame,lpos,rpos,offset=Offset)
+        return (0,640),frame #좌우 포지션은 양끝
+    left_lines,right_lines=divide_left_right(all_lines) #좌우 선분 찾기
+    lx1,lx2,lpos=get_line_pos(left_lines,left=True) #왼쪽 선분위치 찾기
+    rx1,rx2,rpos=get_line_pos(right_lines,right=True) #오른쪽 선분 위치 찾기
+    frame=cv2.line(frame,(int(lx1),Height),(int(lx2),int(Height/2)),(255,0,0),3) #왼쪽 선분 그리기
+    frame=cv2.line(frame,(int(rx1),Height),(int(rx2),int(Height/2)),(255,0,0),3) #오른쪽 선분 그리기
+    frame=draw_rectangle(frame,lpos,rpos,offset=Offset) #사각형 그리기
     return (lpos,rpos),frame
 
+# 핸들 그리기
 def draw_steer(image,steer_angle):
     global Width,Height,arrow_pic
-    arrow_pic=cv2.imread('steer_arrow.png',cv2.IMREAD_COLOR)
-    origin_Height=arrow_pic.shape[0]
-    origin_Width=arrow_pic.shape[1]
-    steer_wheel_center=origin_Height*0.74
-    arrow_Height=Height/2
-    arrow_Width=(arrow_Height*462)/728
-    matrix=cv2.getRotationMatrix2D((origin_Width/2,steer_wheel_center),(steer_angle)*1.5,0.7)
-    arrow_pic=cv2.warpAffine(arrow_pic,matrix,(origin_Width+60,origin_Height))
-    arrow_pic=cv2.resize(arrow_pic,dsize=(int(arrow_Width),int(arrow_Height)),interpolation=cv2.INTER_AREA)
-    gray_arrow=cv2.cvtColor(arrow_pic,cv2.COLOR_BGR2GRAY)
-    _,mask=cv2.threshold(gray_arrow,1,255,cv2.THRESH_BINARY_INV)
-    arrow_roi=image[int(arrow_Height):Height,int((Width/2-arrow_Width/2)):int((Width/2+arrow_Width/2))]
-    arrow_roi=cv2.resize(arrow_roi,dsize=(int(arrow_Width),int(arrow_Height)),interpolation=cv2.INTER_AREA)
-    arrow_roi=cv2.add(arrow_pic,arrow_roi,mask=mask)
-    res=cv2.add(arrow_roi,arrow_pic)
-    image[int((Height-arrow_Height)):Height,int((Width/2-arrow_Width/2)):int((Width/2+arrow_Width/2))-1]=res
-    cv2.imshow('steer',image)
+    arrow_pic=cv2.imread('steer_arrow.png',cv2.IMREAD_COLOR) #컬러로 그림 읽어오기
+    origin_Height=arrow_pic.shape[0] #그림의 높이
+    origin_Width=arrow_pic.shape[1] #넓이 측정
+    steer_wheel_center=origin_Height*0.74 #center 찾기
+    arrow_Height=Height/2 #화살표 높이
+    arrow_Width=(arrow_Height*462)/728 #화살표 넓이
+    matrix=cv2.getRotationMatrix2D((origin_Width/2,steer_wheel_center),(steer_angle)*1.5,0.7) #핸들 그림 회전시키기
+    arrow_pic=cv2.warpAffine(arrow_pic,matrix,(origin_Width+60,origin_Height)) #이미지 기하학적 변환
+    arrow_pic=cv2.resize(arrow_pic,dsize=(int(arrow_Width),int(arrow_Height)),interpolation=cv2.INTER_AREA) #이미지 리사이징
+    gray_arrow=cv2.cvtColor(arrow_pic,cv2.COLOR_BGR2GRAY) #이미지 회색으로 만들기
+    _,mask=cv2.threshold(gray_arrow,1,255,cv2.THRESH_BINARY_INV) #이미지 검정색, 흰색으로 만들기
+    arrow_roi=image[int(arrow_Height):Height,int((Width/2-arrow_Width/2)):int((Width/2+arrow_Width/2))] #이미지 추출
+    arrow_roi=cv2.resize(arrow_roi,dsize=(int(arrow_Width),int(arrow_Height)),interpolation=cv2.INTER_AREA) #추출 이미지 리사이징
+    arrow_roi=cv2.add(arrow_pic,arrow_roi,mask=mask) #이미지 두개 합치기
+    res=cv2.add(arrow_roi,arrow_pic) #이미지 두개 합치기
+    image[int((Height-arrow_Height)):Height,int((Width/2-arrow_Width/2)):int((Width/2+arrow_Width/2))-1]=res #res에서 이미지 추출
+    cv2.imshow('steer',image) #이미지 보여주기
 
+#실행 코드
 def start():
     global image,Width,Height
-    cap=cv2.VideoCapture('kmutrack.mp4')
+    cap=cv2.VideoCapture('kmutrack.mp4') #영상 프레임단위 캡쳐
+    #잘 되었다면
     while cap.isOpened():
-        ret, image=cap.read()
-        pos, frame=process_image(image)
-        center=(pos[0]+pos[1])/2
-        angle=320-center
-        steer_angle=angle*0.4
-        draw_steer(frame,steer_angle)
+        ret, image=cap.read() #image 읽어들이기
+        pos, frame=process_image(image) #image 해석
+        center=(pos[0]+pos[1])/2 #center 찾기
+        angle=320-center #angle 계산
+        steer_angle=angle*0.4 #steer_angle 계산
+        draw_steer(frame,steer_angle) #핸들 그리기
         if cv2.waitKey(3)&0xFF==ord('q'):
-            break
+            break #q 누르면 멈추기
 if __name__=='__main__':
-    start()
+    start() #
