@@ -154,3 +154,6 @@ def start():
             break #q 누르면 멈추기
 if __name__=='__main__':
     start() #
+
+   
+#https://tonylim.tistory.com/54
