@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="pressedColor">#00cfff</color>
+    <color name="normalColor">#FF3497DA</color>
+    <color name="lockColor">#7B8694</color>
+</resources>
